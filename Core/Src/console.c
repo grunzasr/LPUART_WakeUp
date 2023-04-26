@@ -27,6 +27,10 @@ extern char DBG_msg_buf[ DBG_MSG_LEN ];
 
 #define MAX_CONSOLE_OUT_MSG_LEN		80
 
+extern TX_THREAD		consoleThread;
+extern TX_THREAD		uartThread;
+
+
 
 const CMD_INFO_T        gCommands[] =
 {
@@ -116,7 +120,8 @@ consoleTask(
 			if( currentTime > timeToSleep )
 			{
 #ifdef	ENABLE_SLEEPING
-				tx_thread_sleep( 100 );	// sleep 100 ticks
+				//tx_thread_sleep( 100 );	// sleep 100 ticks
+				tx_thread_suspend( &consoleThread );	// need to restart with tx_thread_resume()
 #endif
 			}
 		}

@@ -162,7 +162,7 @@ void App_ThreadX_LowPower_Timer_Setup(ULONG count)
   */
 void App_ThreadX_LowPower_Enter(void)
 {
-	/* USER CODE BEGIN  App_ThreadX_LowPower_Enter */
+  /* USER CODE BEGIN  App_ThreadX_LowPower_Enter */
 	UART_WakeUpTypeDef 	WakeUpSelection;
 
 	HAL_StatusTypeDef	status;
@@ -195,10 +195,13 @@ void App_ThreadX_LowPower_Enter(void)
 
 	HAL_SuspendTick();
 
+	// Enable LPUART1 in STOP2 mode
+	RCC->SRDAMR |= RCC_SRDAMR_LPUART1AMEN_Msk;
+
 	/* Enter to the stop mode */
 	HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
 
-	/* USER CODE END  App_ThreadX_LowPower_Enter */
+  /* USER CODE END  App_ThreadX_LowPower_Enter */
 }
 
 /**
@@ -226,7 +229,7 @@ void App_ThreadX_LowPower_Exit(void)
 	  /* Reconfigure the system clock*/
 	  SystemClock_Restore();
 
-	  // Wake up the CLI thread
+	  // Wake up the threads
 	  tx_thread_resume( &uartThread );
 	  tx_thread_resume( &consoleThread );
 

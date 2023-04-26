@@ -242,10 +242,49 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
+
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+	uint32_t			loop;
+
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
+
+  GPIO_InitStruct.Pin = LED_GREEN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(LED_GREEN_GPIO_Port, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = LED_BLUE_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(LED_BLUE_GPIO_Port, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = nLED_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(nLED_GPIO_Port, &GPIO_InitStruct);
+
+  // BLUE and GREEN are active high, nLED is active low
+  HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, GPIO_PIN_SET);
+
+  HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET);
+
+  HAL_GPIO_WritePin(nLED_GPIO_Port, nLED_Pin, GPIO_PIN_RESET);
+
+  loop = 0;
   while (1)
   {
+	  if( loop++ > 1000 )
+	  {
+		  HAL_GPIO_TogglePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin );
+		  HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin );
+		  HAL_GPIO_TogglePin(nLED_GPIO_Port, nLED_Pin );
+		  loop = 0;
+	  }
+
   }
   /* USER CODE END Error_Handler_Debug */
 }

@@ -69,7 +69,7 @@ extern "C" {
    // NUCLEO-U575 board uses about 23 mA if it doesn't sleep
    // and about 1.2 mA if it enables sleeping
 
-//#define ENABLE_SLEEPING
+#define ENABLE_SLEEPING
 
 #define CONSOLE_DEVICE		hlpuart1
 
@@ -89,6 +89,8 @@ void Error_Handler(void);
 #define CLI_TO_MICRO_GPIO_Port GPIOC
 #define VBUS_SENSE_Pin GPIO_PIN_2
 #define VBUS_SENSE_GPIO_Port GPIOC
+#define nLED_Pin GPIO_PIN_15
+#define nLED_GPIO_Port GPIOF
 #define CLI_FROM_MICRO_Pin GPIO_PIN_11
 #define CLI_FROM_MICRO_GPIO_Port GPIOB
 #define UCPD_FLT_Pin GPIO_PIN_14
