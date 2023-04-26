@@ -55,6 +55,7 @@ void DebugMon_Handler(void);
 void RTC_IRQHandler(void);
 void IWDG_IRQHandler(void);
 void LPUART1_IRQHandler(void);
+void LPTIM1_IRQHandler(void);
 void TIM15_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 

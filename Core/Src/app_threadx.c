@@ -57,6 +57,12 @@ TX_THREAD		uartThread;
 uint8_t			consoleStack[ CONSOLE_APP_STACK_SZ ];
 uint8_t			uartThreadStack[ APP_STACK_SIZE ];
 
+// Used to keep track of time when system is in STOP2
+extern LPTIM_HandleTypeDef        hlptim1;
+
+// This is the count at which the LPTIM1 was started
+uint16_t	preLoad;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -152,6 +158,45 @@ void App_ThreadX_LowPower_Timer_Setup(ULONG count)
 {
   /* USER CODE BEGIN  App_ThreadX_LowPower_Timer_Setup */
 
+	// Make sure count isn't larger than 16 bits
+	if( count > 65535 )
+	{
+		count = 65535;
+	}
+
+	// count is when the system needs to wake up to handle a ThreadX timer
+
+	preLoad = 65535 - count;
+
+	// LPTIM1 is clocked from LSI at 32.00 kHz so it updates
+	// every 1 ms.
+	//
+	// Set to trigger an interrupt at (uint16_t) count so every 65.535 seconds max
+	//
+	// Clear the counter when entering STOP2
+	//
+	// When the interrupt occurs STOP2 will be exited and the system
+	// timer will be updated.
+	//
+	// If an LPUART1 interrupt happens then STOP2 will be exited and the system
+	// timer will be updated.
+
+	HAL_LPTIM_Counter_Stop( &hlptim1 );
+
+	// Preload the counter so an interrupt happens when the system needs to wake up
+	hlptim1.Instance->CNT = preLoad;
+
+	HAL_LPTIM_Counter_Start_IT( &hlptim1 );
+
+	volatile uint32_t	loop;
+	loop = 0;
+	while( loop++ < 1000 )
+	{
+		; // NOP
+	}
+
+	return;
+
   /* USER CODE END  App_ThreadX_LowPower_Timer_Setup */
 }
 
@@ -193,12 +238,15 @@ void App_ThreadX_LowPower_Enter(void)
 
 	__HAL_RCC_LPUART1_CLK_SLEEP_ENABLE();
 
+	// Enable LPUART1 in STOP2 mode for autonomous operation
+	__HAL_RCC_LPUART1_CLKAM_ENABLE();
+
+	/* Enable the HSI Clock source while in STOP Mode */
+	__HAL_RCC_HSISTOP_ENABLE();
+
 	HAL_SuspendTick();
 
-	// Enable LPUART1 in STOP2 mode
-	RCC->SRDAMR |= RCC_SRDAMR_LPUART1AMEN_Msk;
-
-	/* Enter to the stop mode */
+	/* Enter stop mode */
 	HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
 
   /* USER CODE END  App_ThreadX_LowPower_Enter */
@@ -245,7 +293,16 @@ void App_ThreadX_LowPower_Exit(void)
 ULONG App_ThreadX_LowPower_Timer_Adjust(void)
 {
   /* USER CODE BEGIN  App_ThreadX_LowPower_Timer_Adjust */
-   return 0;
+
+	uint32_t	ms_spent_asleep;
+
+	// Figure out how long the system has been asleep
+	ms_spent_asleep = hlptim1.Instance->CNT - preLoad;
+
+	HAL_LPTIM_Counter_Stop_IT( &hlptim1 );
+
+   return( ms_spent_asleep );
+
   /* USER CODE END  App_ThreadX_LowPower_Timer_Adjust */
 }
 
