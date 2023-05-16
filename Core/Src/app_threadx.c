@@ -63,6 +63,11 @@ extern LPTIM_HandleTypeDef        hlptim1;
 // This is the count at which the LPTIM1 was started
 uint16_t	preLoad;
 
+#ifndef ERRATTA_2_2_11_RESOLVED
+// Defined in dcache.c
+extern DCACHE_HandleTypeDef hdcache1;
+#endif
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -73,153 +78,110 @@ void SystemClock_Restore(void);
 /* USER CODE END PFP */
 
 /**
-  * @brief  Application ThreadX Initialization.
-  * @param memory_ptr: memory pointer
-  * @retval int
-  */
+ * @brief  Application ThreadX Initialization.
+ * @param memory_ptr: memory pointer
+ * @retval int
+ */
 UINT App_ThreadX_Init(VOID *memory_ptr)
 {
-  UINT ret = TX_SUCCESS;
-  TX_BYTE_POOL *byte_pool = (TX_BYTE_POOL*)memory_ptr;
+	UINT ret = TX_SUCCESS;
+	TX_BYTE_POOL *byte_pool = (TX_BYTE_POOL*)memory_ptr;
 
-   /* USER CODE BEGIN App_ThreadX_MEM_POOL */
-   (void)byte_pool;
-  /* USER CODE END App_ThreadX_MEM_POOL */
+	/* USER CODE BEGIN App_ThreadX_MEM_POOL */
+	(void)byte_pool;
+	/* USER CODE END App_ThreadX_MEM_POOL */
 
-  /* USER CODE BEGIN App_ThreadX_Init */
+	/* USER CODE BEGIN App_ThreadX_Init */
 
 
-   const ULONG		timeSlice = 20;
+	const ULONG		timeSlice = 20;
 
-   // Create the console thread
+	// Create the console thread
 
-   // Create the actual thread
-   ret = tx_thread_create( &consoleThread,			// Thread control block
-		   "Console Thread",		// Thread name
-		   consoleTask,			// Thread entry point
-		   0,						// 32-bit input to thread
-		   consoleStack,				// pointer to stack
-		   CONSOLE_APP_STACK_SZ,	// stack size in bytes
-		   THREAD_PRIO,			// priority
-		   THREAD_PREEMPTION_THRESHOLD,	// preemption threshold
-		   timeSlice,				// thread time-slice value
-		   TX_AUTO_START);			// automatic start selection
-   if( ret != TX_SUCCESS )
-   {
-	   return( ret );
-   }
+	// Create the actual thread
+	ret = tx_thread_create( &consoleThread,			// Thread control block
+			"Console Thread",		// Thread name
+			consoleTask,			// Thread entry point
+			0,						// 32-bit input to thread
+			consoleStack,				// pointer to stack
+			CONSOLE_APP_STACK_SZ,	// stack size in bytes
+			THREAD_PRIO,			// priority
+			THREAD_PREEMPTION_THRESHOLD,	// preemption threshold
+			timeSlice,				// thread time-slice value
+			TX_AUTO_START);			// automatic start selection
+	if( ret != TX_SUCCESS )
+	{
+		return( ret );
+	}
 
-   // Start the UART thread to handle character reception
+	// Start the UART thread to handle character reception
 
-   // Create the actual thread
-   ret = tx_thread_create( &uartThread,		// Thread control block
-			   "UART Thread",		// Thread name
-			   uartTask,			// Thread entry point
-			   0,					// 32-bit input to thread
-			   uartThreadStack,			// pointer to stack
-			   APP_STACK_SIZE,		// stack size in bytes
-			   THREAD_PRIO,		// priority
-			   THREAD_PREEMPTION_THRESHOLD,	// preemption threshold
-			   timeSlice,			// thread time-slice value
-			   TX_AUTO_START);		// automatic start selection
-   if( ret != TX_SUCCESS )
-   {
-      return( ret );
-   }
-  /* USER CODE END App_ThreadX_Init */
+	// Create the actual thread
+	ret = tx_thread_create( &uartThread,		// Thread control block
+			"UART Thread",		// Thread name
+			uartTask,			// Thread entry point
+			0,					// 32-bit input to thread
+			uartThreadStack,			// pointer to stack
+			APP_STACK_SIZE,		// stack size in bytes
+			THREAD_PRIO,		// priority
+			THREAD_PREEMPTION_THRESHOLD,	// preemption threshold
+			timeSlice,			// thread time-slice value
+			TX_AUTO_START);		// automatic start selection
+	if( ret != TX_SUCCESS )
+	{
+		return( ret );
+	}
+	/* USER CODE END App_ThreadX_Init */
 
-  return ret;
+	return ret;
 }
 
-  /**
-  * @brief  MX_ThreadX_Init
-  * @param  None
-  * @retval None
-  */
+/**
+ * @brief  MX_ThreadX_Init
+ * @param  None
+ * @retval None
+ */
 void MX_ThreadX_Init(void)
 {
-  /* USER CODE BEGIN  Before_Kernel_Start */
+	/* USER CODE BEGIN  Before_Kernel_Start */
 
-  /* USER CODE END  Before_Kernel_Start */
+	/* USER CODE END  Before_Kernel_Start */
 
-  tx_kernel_enter();
+	tx_kernel_enter();
 
-  /* USER CODE BEGIN  Kernel_Start_Error */
+	/* USER CODE BEGIN  Kernel_Start_Error */
 
-  /* USER CODE END  Kernel_Start_Error */
+	/* USER CODE END  Kernel_Start_Error */
 }
 
 /**
-  * @brief  App_ThreadX_LowPower_Timer_Setup
-  * @param  count : TX timer count
-  * @retval None
-  */
+ * @brief  App_ThreadX_LowPower_Timer_Setup
+ * @param  count : TX timer count
+ * @retval None
+ */
 void App_ThreadX_LowPower_Timer_Setup(ULONG count)
 {
-  /* USER CODE BEGIN  App_ThreadX_LowPower_Timer_Setup */
+	/* USER CODE BEGIN  App_ThreadX_LowPower_Timer_Setup */
 
-	// Make sure count isn't larger than 16 bits
-	if( count > 65535 )
-	{
-		count = 65535;
-	}
 
-	// count is when the system needs to wake up to handle a ThreadX timer
 
-	preLoad = 65535 - count;
-
-	// LPTIM1 is clocked from LSI at 32.00 kHz so it updates
-	// every 1 ms.
-	//
-	// Set to trigger an interrupt at (uint16_t) count so every 65.535 seconds max
-	//
-	// Clear the counter when entering STOP2
-	//
-	// When the interrupt occurs STOP2 will be exited and the system
-	// timer will be updated.
-	//
-	// If an LPUART1 interrupt happens then STOP2 will be exited and the system
-	// timer will be updated.
-
-	HAL_LPTIM_Counter_Stop( &hlptim1 );
-
-	// Preload the counter so an interrupt happens when the system needs to wake up
-	hlptim1.Instance->CNT = preLoad;
-
-	HAL_LPTIM_Counter_Start_IT( &hlptim1 );
-
-	volatile uint32_t	loop;
-	loop = 0;
-	while( loop++ < 1000 )
-	{
-		; // NOP
-	}
-
-	return;
-
-  /* USER CODE END  App_ThreadX_LowPower_Timer_Setup */
+	/* USER CODE END  App_ThreadX_LowPower_Timer_Setup */
 }
 
 /**
-  * @brief  App_ThreadX_LowPower_Enter
-  * @param  None
-  * @retval None
-  */
+ * @brief  App_ThreadX_LowPower_Enter
+ * @param  None
+ * @retval None
+ */
 void App_ThreadX_LowPower_Enter(void)
 {
-  /* USER CODE BEGIN  App_ThreadX_LowPower_Enter */
+	/* USER CODE BEGIN  App_ThreadX_LowPower_Enter */
 	UART_WakeUpTypeDef 	WakeUpSelection;
 
 	HAL_StatusTypeDef	status;
 
 	/* Enable Power Clock */
 	__HAL_RCC_PWR_CLK_ENABLE();
-
-	/* Configuration of the LPM read mode */
-	if (HAL_FLASHEx_ConfigLowPowerRead(FLASH_LPM_ENABLE) != HAL_OK)
-	{
-		Error_Handler();
-	}
 
 	WakeUpSelection.WakeUpEvent = UART_WAKEUP_ON_READDATA_NONEMPTY;
 	status = HAL_UARTEx_StopModeWakeUpSourceConfig( &hlpuart1, WakeUpSelection );
@@ -228,82 +190,79 @@ void App_ThreadX_LowPower_Enter(void)
 		Error_Handler();
 	}
 
-	status = HAL_UARTEx_EnableStopMode( &hlpuart1 );
-	if( status != HAL_OK )
-	{
-		Error_Handler();
-	}
+#ifndef ERRATTA_2_2_11_RESOLVED
+	// Disable DCACHE
+	HAL_DCACHE_Disable( &hdcache1 );
 
-	__HAL_UART_ENABLE_IT(&hlpuart1, UART_IT_RXFNE );	//  'L4 had UART_IT_WUF);
+	// Disable ICACHE
+	HAL_ICACHE_Disable();
 
-	__HAL_RCC_LPUART1_CLK_SLEEP_ENABLE();
-
-	// Enable LPUART1 in STOP2 mode for autonomous operation
-	__HAL_RCC_LPUART1_CLKAM_ENABLE();
-
-	/* Enable the HSI Clock source while in STOP Mode */
-	__HAL_RCC_HSISTOP_ENABLE();
+#endif
 
 	HAL_SuspendTick();
 
 	/* Enter stop mode */
 	HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
 
-  /* USER CODE END  App_ThreadX_LowPower_Enter */
+	/* USER CODE END  App_ThreadX_LowPower_Enter */
 }
 
 /**
-  * @brief  App_ThreadX_LowPower_Exit
-  * @param  None
-  * @retval None
-  */
+ * @brief  App_ThreadX_LowPower_Exit
+ * @param  None
+ * @retval None
+ */
 void App_ThreadX_LowPower_Exit(void)
 {
-  /* USER CODE BEGIN  App_ThreadX_LowPower_Exit */
+	/* USER CODE BEGIN  App_ThreadX_LowPower_Exit */
 
-	SysTick->CTRL  |= SysTick_CTRL_TICKINT_Msk;
+#ifndef ERRATTA_2_2_11_RESOLVED
+	// Enable DCACHE
+	HAL_DCACHE_Enable( &hdcache1 );
+
+	// Enable ICACHE
+	HAL_ICACHE_Enable();
+
+#endif
+
 	HAL_ResumeTick();
 
-	  /* Enable AHB APB Peripheral Clock */
-	  __HAL_RCC_AHB1_CLK_ENABLE();
-	  __HAL_RCC_AHB2_1_CLK_ENABLE();
-	  __HAL_RCC_AHB2_2_CLK_ENABLE();
-	  __HAL_RCC_AHB3_CLK_ENABLE();
-
-	  __HAL_RCC_APB1_CLK_ENABLE();
-	  __HAL_RCC_APB2_CLK_ENABLE();
-	  __HAL_RCC_APB3_CLK_ENABLE();
-
-	  /* Reconfigure the system clock*/
-	  SystemClock_Restore();
-
-	  // Wake up the threads
-	  tx_thread_resume( &uartThread );
-	  tx_thread_resume( &consoleThread );
+	/* Reconfigure the system clock*/
+	//SystemClock_Restore();
+	// To be woken up there is probably a LPUART message being
+	// received.  This would be a bad time to reconfigure
+	// the clock trees since there's an off-board UART sending
+	// data at the moment.
 
 
-  /* USER CODE END  App_ThreadX_LowPower_Exit */
+	// Wake up the threads
+	tx_thread_resume( &uartThread );
+	tx_thread_resume( &consoleThread );
+
+
+	/* USER CODE END  App_ThreadX_LowPower_Exit */
 }
 
 /**
-  * @brief  App_ThreadX_LowPower_Timer_Adjust
-  * @param  None
-  * @retval Amount of time (in ticks)
-  */
+ * @brief  App_ThreadX_LowPower_Timer_Adjust
+ * @param  None
+ * @retval Amount of time (in ticks)
+ */
 ULONG App_ThreadX_LowPower_Timer_Adjust(void)
 {
-  /* USER CODE BEGIN  App_ThreadX_LowPower_Timer_Adjust */
+	/* USER CODE BEGIN  App_ThreadX_LowPower_Timer_Adjust */
 
-	uint32_t	ms_spent_asleep;
+	//	uint32_t	ms_spent_asleep;
+	//
+	//	// Figure out how long the system has been asleep
+	//	ms_spent_asleep = hlptim1.Instance->CNT - preLoad;
+	//
+	//	HAL_LPTIM_Counter_Stop_IT( &hlptim1 );
+	//
+	//   return( ms_spent_asleep );
 
-	// Figure out how long the system has been asleep
-	ms_spent_asleep = hlptim1.Instance->CNT - preLoad;
-
-	HAL_LPTIM_Counter_Stop_IT( &hlptim1 );
-
-   return( ms_spent_asleep );
-
-  /* USER CODE END  App_ThreadX_LowPower_Timer_Adjust */
+	/* USER CODE END  App_ThreadX_LowPower_Timer_Adjust */
+	return 0;
 }
 
 /* USER CODE BEGIN 1 */
@@ -316,68 +275,68 @@ ULONG App_ThreadX_LowPower_Timer_Adjust(void)
 //*********************************************************************
 void SystemClock_Restore(void)
 {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+	RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /* Deinitialize the RCC */
-  HAL_RCC_DeInit();
+	/* Deinitialize the RCC */
+	HAL_RCC_DeInit();
 
-  /* Enable Power Clock */
-  __HAL_RCC_PWR_CLK_ENABLE();
+	/* Enable Power Clock */
+	__HAL_RCC_PWR_CLK_ENABLE();
 
-  /** Configure the main internal regulator output voltage
-  */
-  if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	/** Configure the main internal regulator output voltage
+	 */
+	if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
-  /** Configure LSE Drive Capability
-  */
-  HAL_PWR_EnableBkUpAccess();
-  __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_HIGH);
+	/** Configure LSE Drive Capability
+	 */
+	HAL_PWR_EnableBkUpAccess();
+	__HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_HIGH);
 
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_LSE
-                              |RCC_OSCILLATORTYPE_MSI|RCC_OSCILLATORTYPE_MSIK;
-  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
-  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
-  RCC_OscInitStruct.MSIState = RCC_MSI_ON;
-  RCC_OscInitStruct.MSICalibrationValue = RCC_MSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_0;
-  RCC_OscInitStruct.LSIDiv = RCC_LSI_DIV1;
-  RCC_OscInitStruct.MSIKClockRange = RCC_MSIKRANGE_0;
-  RCC_OscInitStruct.MSIKState = RCC_MSIK_ON;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_MSI;
-  RCC_OscInitStruct.PLL.PLLMBOOST = RCC_PLLMBOOST_DIV4;
-  RCC_OscInitStruct.PLL.PLLM = 3;
-  RCC_OscInitStruct.PLL.PLLN = 10;
-  RCC_OscInitStruct.PLL.PLLP = 2;
-  RCC_OscInitStruct.PLL.PLLQ = 2;
-  RCC_OscInitStruct.PLL.PLLR = 1;
-  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLLVCIRANGE_1;
-  RCC_OscInitStruct.PLL.PLLFRACN = 0;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Initializes the CPU, AHB and APB busses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2
-                              |RCC_CLOCKTYPE_PCLK3;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-  RCC_ClkInitStruct.APB3CLKDivider = RCC_HCLK_DIV1;
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_LSE
+			|RCC_OSCILLATORTYPE_MSI|RCC_OSCILLATORTYPE_MSIK;
+	RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+	RCC_OscInitStruct.LSIState = RCC_LSI_ON;
+	RCC_OscInitStruct.MSIState = RCC_MSI_ON;
+	RCC_OscInitStruct.MSICalibrationValue = RCC_MSICALIBRATION_DEFAULT;
+	RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_0;
+	RCC_OscInitStruct.LSIDiv = RCC_LSI_DIV1;
+	RCC_OscInitStruct.MSIKClockRange = RCC_MSIKRANGE_0;
+	RCC_OscInitStruct.MSIKState = RCC_MSIK_ON;
+	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_MSI;
+	RCC_OscInitStruct.PLL.PLLMBOOST = RCC_PLLMBOOST_DIV4;
+	RCC_OscInitStruct.PLL.PLLM = 3;
+	RCC_OscInitStruct.PLL.PLLN = 10;
+	RCC_OscInitStruct.PLL.PLLP = 2;
+	RCC_OscInitStruct.PLL.PLLQ = 2;
+	RCC_OscInitStruct.PLL.PLLR = 1;
+	RCC_OscInitStruct.PLL.PLLRGE = RCC_PLLVCIRANGE_1;
+	RCC_OscInitStruct.PLL.PLLFRACN = 0;
+	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/** Initializes the CPU, AHB and APB busses clocks
+	 */
+	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+			|RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2
+			|RCC_CLOCKTYPE_PCLK3;
+	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+	RCC_ClkInitStruct.APB3CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
-  {
-    Error_Handler();
-  }
+	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+	{
+		Error_Handler();
+	}
 
-  //__HAL_RCC_PWR_CLK_DISABLE();
+	//__HAL_RCC_PWR_CLK_DISABLE();
 
 }
 /* USER CODE END 1 */

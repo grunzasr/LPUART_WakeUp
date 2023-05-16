@@ -73,6 +73,9 @@ extern "C" {
 
 #define CONSOLE_DEVICE		hlpuart1
 
+   // System clock speed in Hz
+#define SYSCLK_FREQ	(160*1000*1000)
+
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/

@@ -73,6 +73,16 @@ static void SystemPower_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	HAL_StatusTypeDef	status;
+
+// Software fix for LSERDY never becoming true after software reset
+#ifndef REMOVE_RESET_FIX
+  HAL_PWR_EnableBkUpAccess();
+  __HAL_RCC_BACKUPRESET_FORCE();
+  __HAL_RCC_BACKUPRESET_RELEASE();
+  CLEAR_BIT(RCC->BDCR, RCC_BDCR_LSEON);
+  CLEAR_BIT(RCC->BDCR, RCC_BDCR_LSEBYP);
+#endif
 
   /* USER CODE END 1 */
 
@@ -109,8 +119,21 @@ int main(void)
   MX_LPTIM1_Init();
   /* USER CODE BEGIN 2 */
 
+  // Need HSI running during STOP2
   __HAL_RCC_WAKEUPSTOP_CLK_CONFIG(RCC_STOP_WAKEUPCLOCK_HSI);
   __HAL_RCC_KERWAKEUPSTOP_CLK_CONFIG(RCC_STOP_KERWAKEUPCLOCK_HSI);
+
+  // Enable LPUART1 in STOP2 mode for autonomous operation
+  __HAL_RCC_LPUART1_CLKAM_ENABLE();
+
+  /* Enable the HSI Clock source while in STOP Mode */
+  __HAL_RCC_HSISTOP_ENABLE();
+
+  status = HAL_UARTEx_EnableStopMode( &hlpuart1 );
+  if( status != HAL_OK )
+  {
+     Error_Handler();
+  }
 
   /* USER CODE END 2 */
 

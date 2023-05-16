@@ -8,6 +8,7 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "main.h"
 #include "app_threadx.h"
 
 #include "usart.h"
@@ -99,9 +100,19 @@ consoleTask(
 
 
 			ret = fifo_pop( &consoleCmdQ,	// ptr to queue
-					(char *)cmd);	// ptr into which to put extracted command
+					        (char *)cmd);	// ptr into which to put extracted command
 			if( ret == QUEUE_SUCCESS )
 			{
+				// There is a message to process so there is a moment to check the
+				 // system clock and see if it needs to be restored
+
+				 SystemCoreClock = HAL_RCC_GetSysClockFreq() >> AHBPrescTable[(RCC->CFGR2 & RCC_CFGR2_HPRE) >> RCC_CFGR2_HPRE_Pos];
+				 if( SystemCoreClock != SYSCLK_FREQ )
+				 {
+				    // Restore the SYSCLK to full speed
+				    SystemClock_Restore();
+				 }
+
 				if( cmd[0] != '\0' )
 				{
 					vSerialPutString( "\r\n" );
@@ -120,7 +131,6 @@ consoleTask(
 			if( currentTime > timeToSleep )
 			{
 #ifdef	ENABLE_SLEEPING
-				//tx_thread_sleep( 100 );	// sleep 100 ticks
 				tx_thread_suspend( &consoleThread );	// need to restart with tx_thread_resume()
 #endif
 			}
