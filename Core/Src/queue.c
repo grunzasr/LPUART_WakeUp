@@ -145,6 +145,7 @@ int8_t
       src = queue->item[ queue->tail ];
       dataLen = strlen( src );
       memcpy( dst, src, dataLen );
+      dst[ dataLen ] = '\0';
       queue->entries--;
       queue->tail = (queue->tail + 1) % MAX_Q_ITEMS;
    }

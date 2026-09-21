@@ -334,14 +334,9 @@ charBufferPushOne(
 
 	ok = 1;
 
-	if( buffer == NULL )
+	if( buffer == NULL || data == NULL )
 	{
-		ok = 0;
-	}
-
-	if( data  == NULL )
-	{
-		ok = 0;
+		return 0;
 	}
 
 	nextIndex = (buffer->head + 1) % MAX_RX_RING_SZ;
@@ -432,19 +427,14 @@ charBufferPopOne(
 		ok = 0;
 	}
 
-	if( buffer->tail == buffer->head )
-	{
-		charsAvailable = 0;
-	}
-	else
-	{
-		charsAvailable = 1;
-	}
-
-	if( charsAvailable )
+	if( ok && buffer->tail != buffer->head )
 	{
 		*data = buffer->data[buffer->tail];
 		buffer->tail = (buffer->tail + 1) % MAX_RX_RING_SZ;
+	}
+	else
+	{
+		ok = 0;
 	}
 
 	return( ok );
@@ -570,12 +560,13 @@ uartTask(
 				else
 				{
 					// another character of the message
-					message[msg_len++] = c;
-					if( msg_len > MAX_MSG_LEN )
+					if( msg_len < MAX_MSG_LEN - 1 )
 					{
-						// TODO : deal with too long of a message
-						msg_len = MAX_MSG_LEN - 1;
-						message[ msg_len ] = '\0'; // Null termination
+						message[msg_len++] = c;
+					}
+					else
+					{
+						message[ MAX_MSG_LEN - 1 ] = '\0';
 					}
 				}
 			} while( !charBufferEmpty( rcvBuf_p ));
@@ -654,14 +645,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		// Handle Backspace
 		if( rx_byte == '\b' )
 		{
-			// Do not store and send backspace, space, backspace sequence
 			storeChar = 0;
 			charBufferRemoveLastOne( &rxData );
-			// Blocking transmit
-			HAL_UART_Transmit( &CONSOLE_DEVICE,
-					(uint8_t *)"\b \b",
-					3,
-					HAL_MAX_DELAY );
+			uint8_t bs_seq[3] = { '\b', ' ', '\b' };
+			charBufferPush( &txData, bs_seq, 3 );
 		}
 
 		if( (huart->ErrorCode & HAL_UART_ERROR_FE) == HAL_UART_ERROR_FE )
