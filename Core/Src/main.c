@@ -22,7 +22,6 @@
 #include "adc.h"
 #include "dcache.h"
 #include "icache.h"
-#include "lptim.h"
 #include "usart.h"
 #include "octospi.h"
 #include "rtc.h"
@@ -116,7 +115,6 @@ int main(void)
   MX_SAI1_Init();
   MX_DCACHE1_Init();
   MX_ICACHE_Init();
-  MX_LPTIM1_Init();
   /* USER CODE BEGIN 2 */
 
   // Need HSI running during STOP2

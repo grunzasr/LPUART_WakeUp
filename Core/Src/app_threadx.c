@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include "usart.h"
 #include "console.h"
+#include "rtc.h"
 
 /* USER CODE END Includes */
 
@@ -57,11 +58,12 @@ TX_THREAD		uartThread;
 uint8_t			consoleStack[ CONSOLE_APP_STACK_SZ ];
 uint8_t			uartThreadStack[ APP_STACK_SIZE ];
 
-// Used to keep track of time when system is in STOP2
-extern LPTIM_HandleTypeDef        hlptim1;
+extern volatile uint32_t uwTick;
 
-// This is the count at which the LPTIM1 was started
-uint16_t	preLoad;
+#define RTC_SYNCH_PREDIV 255
+
+static RTC_TimeTypeDef sleepEntryTime;
+static RTC_DateTypeDef sleepEntryDate;
 
 #ifndef ERRATTA_2_2_11_RESOLVED
 // Defined in dcache.c
@@ -201,6 +203,9 @@ void App_ThreadX_LowPower_Enter(void)
 
 	HAL_SuspendTick();
 
+	HAL_RTC_GetTime(&hrtc, &sleepEntryTime, RTC_FORMAT_BIN);
+	HAL_RTC_GetDate(&hrtc, &sleepEntryDate, RTC_FORMAT_BIN);
+
 	/* Enter stop mode */
 	HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
 
@@ -252,17 +257,30 @@ ULONG App_ThreadX_LowPower_Timer_Adjust(void)
 {
 	/* USER CODE BEGIN  App_ThreadX_LowPower_Timer_Adjust */
 
-	//	uint32_t	ms_spent_asleep;
-	//
-	//	// Figure out how long the system has been asleep
-	//	ms_spent_asleep = hlptim1.Instance->CNT - preLoad;
-	//
-	//	HAL_LPTIM_Counter_Stop_IT( &hlptim1 );
-	//
-	//   return( ms_spent_asleep );
+	RTC_TimeTypeDef wakeTime;
+	RTC_DateTypeDef wakeDate;
+	int32_t elapsedSeconds, elapsedSubSeconds, elapsedMs;
+
+	HAL_RTC_GetTime(&hrtc, &wakeTime, RTC_FORMAT_BIN);
+	HAL_RTC_GetDate(&hrtc, &wakeDate, RTC_FORMAT_BIN);
+
+	elapsedSeconds = (wakeTime.Hours * 3600 + wakeTime.Minutes * 60 + wakeTime.Seconds)
+	               - (sleepEntryTime.Hours * 3600 + sleepEntryTime.Minutes * 60 + sleepEntryTime.Seconds);
+	if (elapsedSeconds < 0)
+		elapsedSeconds += 86400;
+
+	// Sub-second register counts DOWN from SynchPrediv to 0
+	elapsedSubSeconds = (int32_t)sleepEntryTime.SubSeconds - (int32_t)wakeTime.SubSeconds;
+
+	elapsedMs = elapsedSeconds * 1000
+	          + (elapsedSubSeconds * 1000) / (RTC_SYNCH_PREDIV + 1);
+
+	uwTick += (uint32_t)elapsedMs;
+
+	// ThreadX ticks are 10ms (100 Hz)
+	return (ULONG)(elapsedMs / 10);
 
 	/* USER CODE END  App_ThreadX_LowPower_Timer_Adjust */
-	return 0;
 }
 
 /* USER CODE BEGIN 1 */
